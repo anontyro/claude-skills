@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Checks a spec-plan spec for the structure /build-spec and the team rely on.
+// Checks a spec-plan spec for the structure the builders and reviewers rely on.
 // Usage: node validate-spec.mjs <spec.md> [--json]   (run from the repo root)
 // Exit 0 = no errors (warnings allowed), 1 = errors, 2 = bad usage.
 import { existsSync, readFileSync } from "node:fs";
@@ -9,9 +9,9 @@ import { pathToFileURL } from "node:url";
 const MAX_RELEASE_FILES = 30;
 const REQUIRED_SECTIONS = ["Goal", "Decisions", "Non-goals", "Lanes", "Packages"];
 
-// Package headings look like: ### P4a · Static: what (R1b · 32753, wave 3)
+// Package headings look like: ### P4a · Frontend: what (R1b · 12345, wave 3)
 const PACKAGE_HEADING = /^### (P\d+[a-z]?) · (.*)$/;
-const WORK_ITEM = /\b\d{5}\b/;
+const WORK_ITEM = /\b\d{3,}\b|\b[A-Z][A-Z0-9]*-\d+\b/; // 12345 or PROJ-123
 
 export function parsePackages(text) {
     const lines = text.split(/\r?\n/);
@@ -61,7 +61,7 @@ export function parsePackages(text) {
     return packages;
 }
 
-// Release summary blocks: > **R1b · task 32753 · ~19 files: ...
+// Release summary blocks: > **R1b · task 12345 · ~19 files: ...
 export function parseReleaseSummaries(text) {
     const summaries = new Map();
     for (const m of text.matchAll(/^> \*\*(R\d+[a-z]?) · ([^\n]*)/gm)) {
@@ -71,7 +71,7 @@ export function parseReleaseSummaries(text) {
     return summaries;
 }
 
-// Waves table rows: | 3 | P4a, P5 | R1b (32753) | ... |
+// Waves table rows: | 3 | P4a, P5 | R1b (12345) | ... |
 export function parseWavesTable(text) {
     const waves = new Map();
     for (const m of text.matchAll(/^\| (\d+) \| ((?:P\d+[a-z]?(?:, )?)+) \|/gm)) {
@@ -99,7 +99,7 @@ export function validateSpec(specPath, repoRoot = process.cwd()) {
     const rel = fromRoot.split("\\").join("/");
 
     // Location: Docs/<Feature>/Specs/<yyyy-MM-dd>-<PBI#>-<slug>.md
-    const location = rel.match(/^Docs\/([A-Z][A-Za-z0-9]*)\/Specs\/(\d{4}-\d{2}-\d{2}-\d{5}-[a-z0-9-]+)\.md$/);
+    const location = rel.match(/^Docs\/([A-Z][A-Za-z0-9]*)\/Specs\/(\d{4}-\d{2}-\d{2}-[A-Za-z0-9]+(?:-\d+)?-[a-z0-9-]+)\.md$/);
     if (!location) errors.push(`Location: expected Docs/<Feature>/Specs/<yyyy-MM-dd>-<PBI#>-<slug>.md, got ${rel}`);
     const featureDir = dirname(dirname(absolute));
 
@@ -111,7 +111,7 @@ export function validateSpec(specPath, repoRoot = process.cwd()) {
     const testing = text.match(/^Manual testing: `([^`]+)`/m);
     if (!testing) errors.push("Header: no `Manual testing:` line");
     else {
-        if (!/\/Testing\/MANUAL-TESTING-\d{5}-[^/]+\.md$/.test(testing[1])) errors.push(`Manual testing doc should be in Docs/<Feature>/Testing/: ${testing[1]}`);
+        if (!/\/Testing\/MANUAL-TESTING-[A-Za-z0-9]+(?:-\d+)?-[^/]+\.md$/.test(testing[1])) errors.push(`Manual testing doc should be in Docs/<Feature>/Testing/: ${testing[1]}`);
         if (!existsSync(resolve(repoRoot, testing[1]))) errors.push(`Manual testing doc does not exist: ${testing[1]}`);
     }
     const decisionsReadme = join(featureDir, "Decisions", "README.md");

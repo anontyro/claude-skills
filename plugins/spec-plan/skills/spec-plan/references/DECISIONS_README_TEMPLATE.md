@@ -5,7 +5,7 @@
 The rules <feature> is built on, one per file. Each file says what the code does and why. For how it does it, read
 the code.
 
-**Spec:** `Docs/<Feature>/Specs/<spec>.md` · **Manual testing:** `../Testing/MANUAL-TESTING-<PBI#>-<slug>.md` · **PBI:** <PBI#>
+**Spec:** `Docs/<Feature>/Specs/<spec>.md` · **Manual testing:** `../Testing/MANUAL-TESTING-<ID>-<slug>.md` · **Work item:** <ID>
 
 ## How to use this folder
 

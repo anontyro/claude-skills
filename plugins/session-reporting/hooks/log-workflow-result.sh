@@ -3,23 +3,23 @@
 # lines, so the quality axis (confirmed/refuted, complete/blocked, scores) can
 # be plotted next to the cost axis that OpenTelemetry already provides.
 #
-# Registered in .claude/settings.local.json (see ../settings.snippet.json) for:
+# Registered by this plugin's hooks/hooks.json for:
 #   PostToolUse  (matcher "Workflow") -> data/outcomes.jsonl
 #   SubagentStop                      -> data/agents.jsonl
 #
-# Output directory: $CLAUDE_REPORTING_DIR, else <this folder>/../data.
+# Output directory: $CLAUDE_REPORTING_DIR, else ~/.claude/reporting (outside the
+# plugin dir, which is replaced on update). stack/docker-compose.yml mounts the same path.
 # The otel-collector tails that directory into Loki (otel-collector-config.yaml).
 #
-# Uses python3 for JSON because node is nvm-managed here and not on the PATH
-# hooks run with. Never blocks Claude: always exits 0.
+# Uses python3 for JSON because node may not be on the PATH hooks run with.
+# Never blocks Claude: always exits 0.
 
 set -u
 input="$(cat)"
 
 dir="${CLAUDE_REPORTING_DIR:-}"
 if [ -z "$dir" ]; then
-  here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  dir="$here/../data"
+  dir="$HOME/.claude/reporting"
 fi
 mkdir -p "$dir" 2>/dev/null || exit 0
 

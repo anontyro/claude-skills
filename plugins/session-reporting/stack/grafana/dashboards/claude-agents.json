@@ -208,7 +208,7 @@
     },
     {
       "type": "stat",
-      "title": "review-verify gate: pass / fail",
+      "title": "Workflow gate: pass / fail",
       "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 6, "w": 6, "x": 4, "y": 35 },
       "fieldConfig": {
@@ -222,7 +222,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (gate) (count_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"review-verify\" [$__range]))",
+          "expr": "sum by (gate) (count_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" [$__range]))",
           "legendFormat": "{{gate}}",
           "instant": true
         }
@@ -238,13 +238,13 @@
       "targets": [
         {
           "refId": "confirmed",
-          "expr": "sum(sum_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"review-verify\" | unwrap count_confirmed [$__range]))",
+          "expr": "sum(sum_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | unwrap count_confirmed [$__range]))",
           "legendFormat": "confirmed",
           "instant": true
         },
         {
           "refId": "refuted",
-          "expr": "sum(sum_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"review-verify\" | unwrap count_refuted [$__range]))",
+          "expr": "sum(sum_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | unwrap count_refuted [$__range]))",
           "legendFormat": "refuted",
           "instant": true
         }
@@ -252,7 +252,7 @@
     },
     {
       "type": "stat",
-      "title": "build-spec: last quality score (1-5)",
+      "title": "Workflow: last quality score (1-5)",
       "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 6, "w": 7, "x": 17, "y": 35 },
       "fieldConfig": {
@@ -274,7 +274,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"build-spec\" | unwrap quality_score [$__range])",
+          "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | unwrap quality_score [$__range])",
           "instant": true
         }
       ]

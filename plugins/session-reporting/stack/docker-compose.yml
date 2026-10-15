@@ -6,10 +6,9 @@ name: claude-otel
 #   Grafana: http://localhost:3000  (anonymous admin; dashboard "Claude agents")
 #
 # Claude Code -> otel-collector (4317) -> Prometheus (metrics) / Loki (events) / Tempo (traces)
-# Hook JSONL   -> otel-collector filelog (./data/*.jsonl) -> Loki  (the quality axis)
+# Hook JSONL   -> otel-collector filelog ($CLAUDE_REPORTING_DIR, default ~/.claude/reporting) -> Loki  (the quality axis)
 #
-# This folder is self-contained so it can move out of the repo: nothing here
-# references repo paths except the hook, which resolves its own location.
+# This folder is self-contained: nothing here references repo paths.
 
 services:
   otel-collector:
@@ -18,7 +17,7 @@ services:
     volumes:
       - ./otel-collector-config.yaml:/etc/otel/config.yaml:ro
       # Outcome/agent JSONL written by hooks/log-workflow-result.sh
-      - ./data:/var/claude-reporting:ro
+      - ${CLAUDE_REPORTING_DIR:-${HOME}/.claude/reporting}:/var/claude-reporting:ro
     ports:
       - "4317:4317"   # OTLP gRPC  <- Claude Code
       - "4318:4318"   # OTLP HTTP

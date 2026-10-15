@@ -1,15 +1,15 @@
-# Manual testing: <Feature title> (PBI <PBI#>)
+# Manual testing: <Feature title> (<ID>)
 
 <!--
-Save as Docs/<Feature>/Testing/MANUAL-TESTING-<PBI#>-<slug>.md, next to the feature's Specs/ and Decisions/ (one
+Save as Docs/<Feature>/Testing/MANUAL-TESTING-<ID>-<slug>.md, next to the feature's Specs/ and Decisions/ (one
 file per spec, or per release when a PR covers only one).
 Written for a tester on the Test environment who has not read the spec. Every test case is traceable back to a
 release, a work item and the spec's decisions. Delete these comments.
 -->
 
-**Spec:** `Docs/<Feature>/Specs/<yyyy-MM-dd>-<PBI#>-<slug>.md`
+**Spec:** `Docs/<Feature>/Specs/<yyyy-MM-dd>-<ID>-<slug>.md`
 **Branch / PR:** `<branch>` (PR <number>, if raised)
-**Work items:** PBI <PBI#> · tasks <task#> (R1), <task#> (R2), ...
+**Work items:** <ID> · tasks <task#> (R1), <task#> (R2), ...
 **Environment:** Test<, with any real external service it depends on>.
 **Covers:** <all releases | R1 only | ...>. <What is deliberately not covered, e.g. already in master.>
 
@@ -29,7 +29,7 @@ release, a work item and the spec's decisions. Delete these comments.
 
 ## Setup
 
-- LaunchDarkly, for the test member:
+- Feature flags, for the test user:
   - `<toggle key>` on.
   - <any other toggle and its state>
 - Test data:

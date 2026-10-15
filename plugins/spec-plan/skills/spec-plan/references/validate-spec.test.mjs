@@ -1,4 +1,4 @@
-// node --test .claude/skills/spec-plan/references/validate-spec.test.mjs
+// node --test skills/spec-plan/references/validate-spec.test.mjs
 // Builds a minimal valid feature folder, then breaks one rule per test.
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

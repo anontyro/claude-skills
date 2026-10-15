@@ -70,7 +70,7 @@
     },
     {
       "type": "table", "title": "MCP server connections", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
-      "description": "A server that keeps reconnecting or failing shows up here first (azure-devops and mui-mcp fail when npx is not on the PATH).",
+      "description": "A server that keeps reconnecting or failing shows up here first (servers launched via npx fail when npx is not on the PATH).",
       "datasource": { "type": "loki", "uid": "loki" },
       "transformations": [{ "id": "organize", "options": { "excludeByName": { "Time": true } } }],
       "targets": [{ "refId": "A", "instant": true, "format": "table", "expr": "sum by (server_name, status, transport_type) (count_over_time({service_name=\"claude-code\"} | event_name=\"mcp_server_connection\" [$__range]))" }]

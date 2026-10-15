@@ -1,0 +1,6 @@
+{
+  "name": "session-reporting",
+  "description": "Hooks that log workflow outcomes and subagent stops as JSONL, plus an optional local OpenTelemetry/Grafana stack to visualise Claude Code cost and quality.",
+  "version": "0.1.0",
+  "author": { "name": "Alex Wilkinson" }
+}

@@ -1,23 +1,23 @@
 # <Feature title>
 
 <!--
-Copy to Docs/<Feature>/Specs/<yyyy-MM-dd>-<PBI#>-<short-slug>.md and fill every section. Delete these comments.
-The spec is the only channel from the human to /build-spec: every decision a builder could make differently is
+Copy to Docs/<Feature>/Specs/<yyyy-MM-dd>-<ID>-<short-slug>.md and fill every section. Delete these comments.
+The spec is the only channel from the human to the builders: every decision a builder could make differently is
 recorded here, and every file a package may touch is listed in its ownedFiles.
 -->
 
-PBI: <PBI#>. Releases map to these tasks:
+Work item: <ID>. Releases map to these tasks:
 
 | Release | Task |
 |---|---|
 | R1 · <short name> | <task#> |
 | R2 · <short name> | <task#> |
 
-Branch: `feature/<PBI#>-<slug>`.
-Toggle: `<PBI#>-<kebab-description>` (new or existing; D1). Every release ships behind it.
+Branch: `feature/<ID>-<slug>`.
+Toggle: `<flag-key>` (new or existing; D1), if releases ship behind a flag.
 Design: `Docs/<Feature>/Design/<file>` (cite page numbers as pN), if there is one.
 Status: **draft <yyyy-MM-dd>**. <Which questions are open, and which releases they block.>
-Manual testing: `Docs/<Feature>/Testing/MANUAL-TESTING-<PBI#>-<slug>.md` (see `references/MANUAL_TESTING_TEMPLATE.md`).
+Manual testing: `Docs/<Feature>/Testing/MANUAL-TESTING-<ID>-<slug>.md` (see `references/MANUAL_TESTING_TEMPLATE.md`).
 Decisions: `Docs/<Feature>/Decisions/` (README lists every planned record and the package that writes it; see
 `references/DECISIONS_README_TEMPLATE.md` and `references/DECISION_TEMPLATE.md`).
 
@@ -32,7 +32,7 @@ Decisions: `Docs/<Feature>/Decisions/` (README lists every planned record and th
 
 <!--
 Releases target <= 30 changed files. A release well above that is split into sub-releases (R1a, R1b, ...). Sub-releases
-may depend on each other more tightly than releases do, but every one of them is behind the toggle.
+may depend on each other more tightly than releases do, but each one should be mergeable on its own.
 -->
 
 ## Background (read <yyyy-MM-dd>)
@@ -54,12 +54,11 @@ hooks, components, services, endpoints). Call out bugs found on the way that the
 
 ### R1 · <short name>, plus decisions shared by every release
 
-> **R1 · PBI <PBI#> / task <task#> · ~N files: ~X new, ~Y modified · packages P0–Pn**
+> **R1 · <ID> / task <task#> · ~N files: ~X new, ~Y modified · packages P0–Pn**
 >
 > <2–3 sentences: what changes for the user in this release, then what changes in the code.>
 
-- **D1 · Feature flag.** <key, name, client-side availability, LaunchDarkly state; constant names in C# and TS. See
-  the `launchdarkly-toggle` skill.>
+- **D1 · Feature flag.** <key, name, default state, where it is defined. Delete if the work is not flagged.>
 - **D2 · <decision>.** <interface / DTO field names / error contract / where state lives / ...>
 
 ### R2 · <short name>
@@ -70,8 +69,6 @@ hooks, components, services, endpoints). Call out bugs found on the way that the
 
 - **D<n> · <decision>.** <...>
 
-<!-- Strings: list every new translation key with its English text, and say which package adds them (one early
-package adds them all). -->
 
 ## Non-goals
 
@@ -79,12 +76,12 @@ package adds them all). -->
 
 ## Lanes
 
+<!-- Lanes are independent areas of the codebase with their own checks (e.g. frontend, backend, db). Replace the rows
+with this repo's lanes; list each lane's check commands so builders and reviewers run exactly those. -->
+
 | Lane | Touched | Checks |
 |---|---|---|
-| `static` | yes/no | `npm run compile`; `npx eslint --config .eslintrc.json <files>`; `npx jest <dirs> --no-coverage` |
-| `icp` | yes/no | `pnpm --filter <app> exec tsc --noEmit`; `pnpm exec eslint <files>`; `pnpm exec jest -c ./jest.config.js --selectProjects apps-<app>` |
-| `backend` | yes/no | `dotnet build <test csproj> -c Debug`; `dotnet test <test csproj> --no-build --filter "<filter>"` |
-| `db` | yes/no | no local compile; follow the DB conventions in CLAUDE.md exactly |
+| `<lane>` | yes/no | `<build / lint / test commands>` |
 
 ## Packages
 
@@ -92,7 +89,7 @@ Waves:
 
 | Wave | Packages | Release | Note |
 |---|---|---|---|
-| 1 | P0, P1 | all (<PBI#>) · R1 (<task#>) | parallel; P0 adds every string up front |
+| 1 | P0, P1 | all (<ID>) · R1 (<task#>) | parallel |
 | 2 | P2 | R1 (<task#>) | |
 
 Packages that share a wave share no files.
@@ -100,9 +97,9 @@ Packages that share a wave share no files.
 Shared acceptance for every package:
 
 - The lane checks pass for its files, measured against the baseline.
-- Nothing new runs with the toggle off.
+- Nothing new runs with the toggle off (if flagged).
 - No test is deleted or skipped to pass a check.
-- Strings only through the early strings package. A package that finds a missing string reports `blocked`.
+- Shared resources (strings, config, schemas) only through the package that owns them. A package that finds one missing reports `blocked`.
 
 ### P0 · <Lane>: <what> (<release> · <task#>, wave 1)
 - Lane: `<lane>`

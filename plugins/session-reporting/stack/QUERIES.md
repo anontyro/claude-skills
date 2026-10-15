@@ -41,7 +41,7 @@ sum by (workflow_run_id, workflow_name) (increase(claude_code_cost_usage_USD_tot
 A/B two prompt variants:
 
 ```promql
-sum by (variant) (increase(claude_code_cost_usage_USD_total{harness="phoenix"}[7d]))
+sum by (variant) (increase(claude_code_cost_usage_USD_total{harness="my-repo"}[7d]))
 ```
 
 ## How Claude Code events land in Loki
@@ -110,10 +110,10 @@ Every run, newest first, one readable line each:
   | line_format "{{.ts}} {{.workflow}} {{.status}}{{.gate}} spec={{.specPath}} report={{.reportPath}}"
 ```
 
-review-verify gate results:
+Workflow gate results:
 
 ```logql
-sum by (gate) (count_over_time({service_name="claude-reporting"} | file="outcomes.jsonl" | workflow="review-verify" [7d]))
+sum by (gate) (count_over_time({service_name="claude-reporting"} | file="outcomes.jsonl" [7d]))
 ```
 
 Confirmed vs refuted findings. Refuted climbing faster than confirmed means
@@ -121,21 +121,21 @@ reviewers over-report; confirmed with no refuted means verifiers are too
 generous:
 
 ```logql
-sum(sum_over_time({service_name="claude-reporting"} | file="outcomes.jsonl" | workflow="review-verify" | unwrap count_confirmed [7d]))
-sum(sum_over_time({service_name="claude-reporting"} | file="outcomes.jsonl" | workflow="review-verify" | unwrap count_refuted   [7d]))
+sum(sum_over_time({service_name="claude-reporting"} | file="outcomes.jsonl" | unwrap count_confirmed [7d]))
+sum(sum_over_time({service_name="claude-reporting"} | file="outcomes.jsonl" | unwrap count_refuted   [7d]))
 ```
 
-build-spec quality score over time, and how many refine findings were applied:
+Workflow quality score over time, and how many refine findings were applied:
 
 ```logql
-{service_name="claude-reporting"} | file="outcomes.jsonl" | workflow="build-spec" | unwrap quality_score
-{service_name="claude-reporting"} | file="outcomes.jsonl" | workflow="build-spec" | unwrap count_refineFindingsApplied
+{service_name="claude-reporting"} | file="outcomes.jsonl" | unwrap quality_score
+{service_name="claude-reporting"} | file="outcomes.jsonl" | unwrap count_refineFindingsApplied
 ```
 
 Packages blocked or failed per run (a decomposition problem when it recurs):
 
 ```logql
-{service_name="claude-reporting"} | file="outcomes.jsonl" | workflow="build-spec" | count_blocked > 0 or count_failed > 0
+{service_name="claude-reporting"} | file="outcomes.jsonl" | count_blocked > 0 or count_failed > 0
 ```
 
 Subagent p95 duration by type. A wide spread inside one wave means one

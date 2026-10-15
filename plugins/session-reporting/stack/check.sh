@@ -4,7 +4,7 @@
 #   docker compose up -d && ./check.sh
 #
 # Verifies: every service answers, Grafana provisioned the datasources and the
-# dashboard, and the collector is tailing data/*.jsonl into Loki (by writing a
+# dashboard, and the collector is tailing the reporting dir into Loki (by writing a
 # probe line and querying it back). Exit code is non-zero on any failure.
 
 set -u
@@ -49,9 +49,11 @@ check_http "target otel-collector up" "http://localhost:9090/api/v1/query?query=
 
 echo "Outcome pipeline (hook -> filelog -> Loki)"
 probe="probe-$(date +%s)"
+data="${CLAUDE_REPORTING_DIR:-$HOME/.claude/reporting}"
+mkdir -p "$data"
 printf '{"hook_event_name":"PostToolUse","tool_name":"Workflow","session_id":"%s","tool_input":{"name":"check-sh"},"tool_response":"{\\"status\\":\\"probe\\"}"}' "$probe" \
-  | CLAUDE_REPORTING_DIR="$PWD/data" ./hooks/log-workflow-result.sh
-if tail -1 data/outcomes.jsonl | grep -q "$probe"; then ok "hook wrote data/outcomes.jsonl"; else bad "hook did not write data/outcomes.jsonl"; fi
+  | CLAUDE_REPORTING_DIR="$data" ../hooks/log-workflow-result.sh
+if tail -1 "$data/outcomes.jsonl" | grep -q "$probe"; then ok "hook wrote outcomes.jsonl"; else bad "hook did not write outcomes.jsonl"; fi
 
 found=""
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do

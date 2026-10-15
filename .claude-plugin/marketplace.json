@@ -1,10 +1,19 @@
 {
-  "name": "",
-  "owner": "alexwilkinson",
+  "name": "alex-tools",
+  "owner": {
+    "name": "Alex Wilkinson"
+  },
   "plugins": [
     {
-      "name": "",
-      "source": ""
+      "name": "spec-plan",
+      "source": "./plugins/spec-plan",
+      "description": "Write build-ready specs from an approved plan, with a validator."
+    },
+    {
+      "name": "session-reporting",
+      "source": "./plugins/session-reporting",
+      "description": "Workflow/subagent outcome logging hooks and a local OTel + Grafana stack."
     }
-  ]
+  ],
+  "description": "Alex's shared Claude Code plugins"
 }

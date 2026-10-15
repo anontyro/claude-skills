@@ -6,7 +6,7 @@ Say what the code does and why, not how (the code says how). Edit in place when 
 history, so no dated amendments or "previously" notes. Delete these comments.
 -->
 
-**Status:** Agreed | Accepted · **Work items:** [<task#>](https://dev.azure.com/chinsay/Chinsay%20vNext/_workitems/edit/<task#>) · **Spec:** `Docs/<Feature>/Specs/<spec>.md` D<n>
+**Status:** Agreed | Accepted · **Work items:** <task#> · **Spec:** `Docs/<Feature>/Specs/<spec>.md` D<n>
 
 <The rule in one short paragraph: what is always true in the code.>
 
