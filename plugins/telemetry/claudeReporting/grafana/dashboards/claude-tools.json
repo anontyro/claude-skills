@@ -1,0 +1,86 @@
+{
+  "uid": "claude-tools",
+  "title": "Claude tools & permissions",
+  "tags": ["claude-code"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "timeseries", "title": "Tool calls by tool", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" [$__auto]))", "legendFormat": "{{tool_name}}" }]
+    },
+    {
+      "type": "bargauge", "title": "Tool failure rate", "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "description": "Failed / total per tool over the range. Bash failing 5-10% is normal (probing commands); Read or Edit failing means bad paths or stale content.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.1 }, { "color": "red", "value": 0.3 }] } }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "lcd" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | success=\"false\" [$__range])) / sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" [$__range]))", "legendFormat": "{{tool_name}}" }]
+    },
+    {
+      "type": "bargauge", "title": "Mean tool result size (context load)", "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "description": "Bytes returned to the model per call. Large Bash or Read results are what fills context; scope commands with head/tail/grep.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "avg_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | unwrap tool_result_size_bytes [$__range]) by (tool_name)", "legendFormat": "{{tool_name}}" }]
+    },
+    {
+      "type": "timeseries", "title": "Tool duration p95 by tool", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"tool_result\" | unwrap duration_ms [$__auto]) by (tool_name)", "legendFormat": "{{tool_name}}" }]
+    },
+    {
+      "type": "timeseries", "title": "Permission decisions by decision and source", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "description": "source=config means an allow rule matched; user_temporary / user_permanent are prompts you answered; classifier is auto mode. Prompts you keep answering the same way are allow rules waiting to be written.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (decision, source) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_decision\" [$__auto]))", "legendFormat": "{{decision}} / {{source}}" }]
+    },
+    {
+      "type": "table", "title": "Decisions that were not a config accept", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "description": "Every row is friction: a prompt you answered or a denial. Turn repeated accepts into allow rules in settings.local.json.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "transformations": [{ "id": "organize", "options": { "excludeByName": { "Time": true } } }],
+      "targets": [{ "refId": "A", "instant": true, "format": "table", "expr": "sum by (tool_name, decision, source) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_decision\" | source!=\"config\" [$__range]))" }]
+    },
+    {
+      "type": "timeseries", "title": "Code edits by language", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (language) (increase(claude_code_code_edit_tool_decision_total{decision=\"accept\"}[1h]))", "legendFormat": "{{language}}", "interval": "1h" }]
+    },
+    {
+      "type": "timeseries", "title": "Hook executions and errors by hook event", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "description": "num_non_blocking_error > 0 means a hook script exited non-zero; check its path and permissions.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "runs", "expr": "sum by (hook_event) (count_over_time({service_name=\"claude-code\"} | event_name=\"hook_execution_complete\" [$__auto]))", "legendFormat": "runs {{hook_event}}" },
+        { "refId": "errors", "expr": "sum by (hook_event) (sum_over_time({service_name=\"claude-code\"} | event_name=\"hook_execution_complete\" | unwrap num_non_blocking_error [$__auto]))", "legendFormat": "errors {{hook_event}}" },
+        { "refId": "blocking", "expr": "sum by (hook_event) (sum_over_time({service_name=\"claude-code\"} | event_name=\"hook_execution_complete\" | unwrap num_blocking [$__auto]))", "legendFormat": "blocking {{hook_event}}" }
+      ]
+    },
+    {
+      "type": "table", "title": "MCP server connections", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "description": "A server that keeps reconnecting or failing shows up here first (azure-devops and mui-mcp fail when npx is not on the PATH).",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "transformations": [{ "id": "organize", "options": { "excludeByName": { "Time": true } } }],
+      "targets": [{ "refId": "A", "instant": true, "format": "table", "expr": "sum by (server_name, status, transport_type) (count_over_time({service_name=\"claude-code\"} | event_name=\"mcp_server_connection\" [$__range]))" }]
+    },
+    {
+      "type": "logs", "title": "Failed tool calls (with input)", "gridPos": { "h": 10, "w": 24, "x": 0, "y": 32 },
+      "description": "tool_input is populated for Bash by default and for MCP/Skill calls with OTEL_LOG_TOOL_DETAILS=1.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [{ "refId": "A", "expr": "{service_name=\"claude-code\"} | event_name=\"tool_result\" | success=\"false\" | line_format \"{{.tool_name}}  {{.duration_ms}} ms  {{.tool_input}}\"" }]
+    }
+  ]
+}

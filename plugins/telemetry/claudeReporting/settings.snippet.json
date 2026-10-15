@@ -1,0 +1,88 @@
+{
+  "_comment": "Merge into .claude/settings.local.json (gitignored). Claude Code's classifier blocks Claude from editing permission settings itself, so this is applied by hand. Permission rules are additive to the existing allow list.",
+  "permissions": {
+    "allow": [
+      "Workflow(build-spec)",
+      "Workflow(review-verify)",
+      "Bash(cd:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Bash(npm run:*)",
+      "Bash(npx jest:*)",
+      "Bash(npx eslint:*)",
+      "Bash(pnpm --filter:*)",
+      "Bash(pnpm exec:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(mkdir -p reports/*)",
+      "Edit(reports/**)",
+      "Write(reports/**)",
+      "Edit(Docs/plans/**)",
+      "Write(Docs/plans/**)",
+      "Bash(.claude/maintenance/maint.sh:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm outdated:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm outdated:*)",
+      "Bash(pnpm install:*)",
+      "Bash(dotnet list:*)",
+      "Bash(dotnet add:*)",
+      "Bash(git switch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout -- *)",
+      "mcp__Snyk__snyk_sca_scan",
+      "Edit(reports/maintenance/**)",
+      "Write(reports/maintenance/**)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(az repos pr:*)",
+      "Bash(gh pr create:*)",
+      "Bash(npm audit fix --force*)",
+      "Bash(npm publish:*)"
+    ]
+  },
+  "workflowSizeGuideline": "medium",
+  "subagentPromptCacheTtl": "1h",
+  "env": {
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_METRICS_EXPORTER": "otlp",
+    "OTEL_LOGS_EXPORTER": "otlp",
+    "OTEL_TRACES_EXPORTER": "otlp",
+    "CLAUDE_CODE_ENHANCED_TELEMETRY_BETA": "1",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
+    "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "cumulative",
+    "OTEL_METRIC_EXPORT_INTERVAL": "10000",
+    "OTEL_LOGS_EXPORT_INTERVAL": "5000",
+    "OTEL_LOG_TOOL_DETAILS": "1",
+    "OTEL_RESOURCE_ATTRIBUTES": "harness=phoenix,variant=baseline"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/alexander.wilkinson/Repos/Phoenix/claudeReporting/hooks/log-workflow-result.sh",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/alexander.wilkinson/Repos/Phoenix/claudeReporting/hooks/log-workflow-result.sh",
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  }
+}

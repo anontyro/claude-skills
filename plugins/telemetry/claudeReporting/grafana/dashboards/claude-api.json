@@ -1,0 +1,117 @@
+{
+  "uid": "claude-api",
+  "title": "Claude API & latency",
+  "tags": ["claude-code"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "model", "label": "Model", "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(claude_code_cost_usage_USD_total, model)",
+        "includeAll": true, "allValue": ".*", "multi": true, "current": { "text": "All", "value": "$__all" }, "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries", "title": "API requests per interval by model", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{ "refId": "A", "expr": "sum by (model) (count_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" [$__auto]))", "legendFormat": "{{model}}" }]
+    },
+    {
+      "type": "timeseries", "title": "Request latency p50 / p95 by model", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "description": "Wall-clock time per API call including streaming. p95 far above p50 means a few very long generations; check the slowest-requests panel.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        { "refId": "p50", "expr": "quantile_over_time(0.5, {service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap duration_ms [$__auto]) by (model)", "legendFormat": "p50 {{model}}" },
+        { "refId": "p95", "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap duration_ms [$__auto]) by (model)", "legendFormat": "p95 {{model}}" }
+      ]
+    },
+    {
+      "type": "stat", "title": "Cache read ratio (from requests)", "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
+      "description": "cache_read / (input + cache_read + cache_creation). Below ~0.7 in a long session means the prefix keeps changing.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 0.5 }, { "color": "green", "value": 0.75 }] } }, "overrides": [] },
+      "targets": [
+        { "refId": "read", "instant": true, "hide": true, "expr": "sum(sum_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap cache_read_tokens [$__range]))" },
+        { "refId": "input", "instant": true, "hide": true, "expr": "sum(sum_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap input_tokens [$__range]))" },
+        { "refId": "create", "instant": true, "hide": true, "expr": "sum(sum_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap cache_creation_tokens [$__range]))" },
+        { "refId": "ratio", "type": "math", "datasource": { "type": "__expr__", "uid": "__expr__" }, "expression": "$read / ($read + $input + $create)" }
+      ]
+    },
+    {
+      "type": "stat", "title": "Requests", "gridPos": { "h": 6, "w": 4, "x": 6, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" [$__range]))" }]
+    },
+    {
+      "type": "stat", "title": "Mean cost per request", "gridPos": { "h": 6, "w": 4, "x": 10, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 3 }, "overrides": [] },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum(sum_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap cost_usd [$__range])) / sum(count_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" [$__range]))" }]
+    },
+    {
+      "type": "stat", "title": "API errors / retries", "gridPos": { "h": 6, "w": 4, "x": 14, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 10 }] } }, "overrides": [] },
+      "options": { "colorMode": "background" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=~\"api_error|api_retry\" [$__range])) or vector(0)" }]
+    },
+    {
+      "type": "stat", "title": "Slow requests (> 60 s)", "gridPos": { "h": 6, "w": 6, "x": 18, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | duration_ms > 60000 [$__range])) or vector(0)" }]
+    },
+    {
+      "type": "timeseries", "title": "Tokens per request by type (mean)", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "description": "Input growing over a session is context accumulation; output is what you pay most for per token.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "in", "expr": "avg_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap input_tokens [$__auto])", "legendFormat": "input" },
+        { "refId": "out", "expr": "avg_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap output_tokens [$__auto])", "legendFormat": "output" },
+        { "refId": "cr", "expr": "avg_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap cache_read_tokens [$__auto])", "legendFormat": "cache read" },
+        { "refId": "cc", "expr": "avg_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap cache_creation_tokens [$__auto])", "legendFormat": "cache creation" }
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Requests by query source", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "description": "main = your conversation, subagent = delegated agents, auxiliary = housekeeping calls (titles, summaries, classifiers).",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (query_source) (count_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" [$__auto]))", "legendFormat": "{{query_source}}" }]
+    },
+    {
+      "type": "bargauge", "title": "Cost by model (range)", "gridPos": { "h": 7, "w": 8, "x": 0, "y": 22 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum by (model) (increase(claude_code_cost_usage_USD_total{model=~\"$model\"}[$__range]))", "legendFormat": "{{model}}" }]
+    },
+    {
+      "type": "bargauge", "title": "p95 output tokens per request by model", "gridPos": { "h": 7, "w": 8, "x": 8, "y": 22 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | unwrap output_tokens [$__range]) by (model)", "legendFormat": "{{model}}" }]
+    },
+    {
+      "type": "bargauge", "title": "Requests by speed mode", "gridPos": { "h": 7, "w": 8, "x": 16, "y": 22 },
+      "description": "The `speed` attribute distinguishes fast-mode output from standard.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum by (speed) (count_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" [$__range]))", "legendFormat": "{{speed}}" }]
+    },
+    {
+      "type": "logs", "title": "Slowest requests", "gridPos": { "h": 9, "w": 24, "x": 0, "y": 29 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "showTime": true, "wrapLogMessage": false, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [{ "refId": "A", "expr": "{service_name=\"claude-code\"} | event_name=\"api_request\" | model=~\"$model\" | duration_ms > 30000 | line_format \"{{.duration_ms}} ms  ${{.cost_usd}}  {{.model}}  {{.query_source}}  out={{.output_tokens}} in={{.input_tokens}} cacheRead={{.cache_read_tokens}} session={{.session_id}}\"" }]
+    }
+  ]
+}

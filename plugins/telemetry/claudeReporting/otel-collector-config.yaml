@@ -1,0 +1,104 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Quality axis: JSON lines written by hooks/log-workflow-result.sh.
+  # outcomes.jsonl = one line per workflow run; agents.jsonl = one per subagent.
+  # Query in Grafana with {service_name="claude-reporting"} | json
+  filelog/reporting:
+    include:
+      - /var/claude-reporting/*.jsonl
+    start_at: beginning
+    include_file_name: true
+    operators:
+      - type: json_parser
+        parse_to: attributes
+        on_error: send
+      - type: move
+        from: attributes["log.file.name"]
+        to: attributes["file"]
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+  memory_limiter:
+    check_interval: 2s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  resource/reporting:
+    attributes:
+      - key: service.name
+        value: claude-reporting
+        action: upsert
+
+  # Claude Code exports delta counters unless
+  # OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative is set in the
+  # client env. The Prometheus exporter drops delta sums silently, so convert
+  # here and the stack works whichever way a session was launched.
+  deltatocumulative:
+    max_stale: 30m
+
+exporters:
+  # Metrics -> Prometheus scrape endpoint on :8889. resource_to_telemetry_conversion
+  # promotes OTEL_RESOURCE_ATTRIBUTES (harness=, variant=) to labels for A/B runs.
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+    enable_open_metrics: true
+
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # Prints everything to `docker compose logs otel-collector`. Useful for the
+  # first ten minutes; remove from the pipelines once data is flowing.
+  debug:
+    verbosity: basic
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, deltatocumulative, batch]
+      exporters: [prometheus, debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki, debug]
+    logs/reporting:
+      receivers: [filelog/reporting]
+      processors: [resource/reporting, memory_limiter, batch]
+      exporters: [otlphttp/loki]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo, debug]

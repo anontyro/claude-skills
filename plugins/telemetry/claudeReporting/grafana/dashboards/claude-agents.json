@@ -1,0 +1,297 @@
+{
+  "uid": "claude-agents",
+  "title": "Claude agents",
+  "tags": ["claude-code", "workflows"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "variant",
+        "label": "Variant",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(claude_code_cost_usage_USD_total, variant)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Cost",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Spend per hour by agent role (USD/h)",
+      "description": "Verifiers costing more than builders is a smell; a large 'main' share means orchestration is doing work that belongs in a delegated agent.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (agent_name) (rate(claude_code_cost_usage_USD_total{variant=~\"$variant\"}[5m])) * 3600",
+          "legendFormat": "{{agent_name}}"
+        }
+      ]
+    },
+    {
+      "type": "piechart",
+      "title": "Cost share: main vs subagent",
+      "description": "On a workflow run this should be overwhelmingly subagent.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (query_source) (increase(claude_code_cost_usage_USD_total{variant=~\"$variant\"}[$__range]))",
+          "legendFormat": "{{query_source}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Cache hit ratio",
+      "description": "Low means sibling agents differ in model, effort, tools, schema or cwd and each pays for the prefix.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.5 },
+              { "color": "green", "value": 0.75 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(claude_code_token_usage_tokens_total{type=\"cacheRead\",variant=~\"$variant\"}[$__range])) / sum(increase(claude_code_token_usage_tokens_total{variant=~\"$variant\"}[$__range]))",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Token burn by type",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (type) (rate(claude_code_token_usage_tokens_total{variant=~\"$variant\"}[5m]))",
+          "legendFormat": "{{type}}"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Cost per workflow run (USD)",
+      "description": "One bar per workflow.run_id in range.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (workflow_run_id, workflow_name) (increase(claude_code_cost_usage_USD_total{workflow_run_id!=\"\"}[$__range]))",
+          "legendFormat": "{{workflow_name}} {{workflow_run_id}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Agent health",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Tool failures by tool",
+      "description": "The best single signal that an agent's prompt is wrong: an agent whose tool calls fail often is guessing at paths or commands.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | success=\"false\" [$__auto]))",
+          "legendFormat": "{{tool_name}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Subagent p95 duration by agent type (ms)",
+      "description": "A wide spread means one package or file is much harder than its siblings: a decomposition problem, not a model problem.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"subagent_completed\" | unwrap duration_ms [$__auto]) by (agent_type)",
+          "legendFormat": "{{agent_type}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Permission decisions",
+      "description": "Rejections show which allow rules are missing; a stalled run is usually one of these.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (tool_name, decision) (increase(claude_code_code_edit_tool_decision_total[5m]))",
+          "legendFormat": "{{tool_name}} {{decision}}"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Recent Claude Code errors",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=\"claude-code\"} | event_name=~\"api_error|tool_result\" | success=\"false\""
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Outcomes (quality axis, from hooks/log-workflow-result.sh)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Workflow runs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 35 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" [$__range]))",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "review-verify gate: pass / fail",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 6, "w": 6, "x": 4, "y": 35 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "pass" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byName", "options": "fail" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (gate) (count_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"review-verify\" [$__range]))",
+          "legendFormat": "{{gate}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Findings: confirmed vs refuted",
+      "description": "Refuted climbing faster than confirmed means reviewers are over-reporting; confirmed with no refuted means verifiers are too generous.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 6, "w": 7, "x": 10, "y": 35 },
+      "options": { "reduceOptions": { "calcs": ["sum"] } },
+      "targets": [
+        {
+          "refId": "confirmed",
+          "expr": "sum(sum_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"review-verify\" | unwrap count_confirmed [$__range]))",
+          "legendFormat": "confirmed",
+          "instant": true
+        },
+        {
+          "refId": "refuted",
+          "expr": "sum(sum_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"review-verify\" | unwrap count_refuted [$__range]))",
+          "legendFormat": "refuted",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "build-spec: last quality score (1-5)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 6, "w": 7, "x": 17, "y": 35 },
+      "fieldConfig": {
+        "defaults": {
+          "min": 1,
+          "max": 5,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 3 },
+              { "color": "green", "value": 4 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"build-spec\" | unwrap quality_score [$__range])",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Workflow outcomes (raw)",
+      "description": "One line per run. Expand a line to see the full result JSON including counts and report path.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 41 },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | line_format \"{{.workflow}} {{.status}}{{.gate}} spec={{.specPath}} report={{.reportPath}}\""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "uid": "claude-sessions",
+  "title": "Claude sessions",
+  "tags": ["claude-code"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": { "from": "now-7d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "session",
+        "label": "Session",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(claude_code_cost_usage_USD_total, session_id)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat", "title": "Sessions", "gridPos": { "h": 5, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "count(count by (session_id) (increase(claude_code_session_count_total{session_id=~\"$session\"}[$__range])))" }]
+    },
+    {
+      "type": "stat", "title": "Total cost", "gridPos": { "h": 5, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum(increase(claude_code_cost_usage_USD_total{session_id=~\"$session\"}[$__range]))" }]
+    },
+    {
+      "type": "stat", "title": "Prompts", "gridPos": { "h": 5, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"user_prompt\" | session_id=~\"$session\" [$__range]))" }]
+    },
+    {
+      "type": "stat", "title": "Cost per prompt", "gridPos": { "h": 5, "w": 4, "x": 12, "y": 0 },
+      "description": "Total cost divided by prompts. Rising over weeks usually means longer autonomous runs per ask, which is fine if outcomes hold.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
+      "targets": [
+        { "refId": "cost", "instant": true, "hide": true, "expr": "sum(increase(claude_code_cost_usage_USD_total{session_id=~\"$session\"}[$__range]))" },
+        { "refId": "prompts", "instant": true, "hide": true, "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"user_prompt\" | session_id=~\"$session\" [$__range]))" },
+        { "refId": "ratio", "type": "math", "datasource": { "type": "__expr__", "uid": "__expr__" }, "expression": "$cost / $prompts" }
+      ]
+    },
+    {
+      "type": "stat", "title": "Lines added / removed", "gridPos": { "h": 5, "w": 4, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none" },
+      "targets": [
+        { "refId": "A", "instant": true, "expr": "sum(increase(claude_code_lines_of_code_count_total{type=\"added\",session_id=~\"$session\"}[$__range]))", "legendFormat": "added" },
+        { "refId": "B", "instant": true, "expr": "sum(increase(claude_code_lines_of_code_count_total{type=\"removed\",session_id=~\"$session\"}[$__range]))", "legendFormat": "removed" }
+      ]
+    },
+    {
+      "type": "stat", "title": "Cost per 100 lines changed", "gridPos": { "h": 5, "w": 4, "x": 20, "y": 0 },
+      "description": "A rough productivity unit. Compare across weeks, not across tasks.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
+      "targets": [{ "refId": "A", "instant": true, "expr": "100 * sum(increase(claude_code_cost_usage_USD_total{session_id=~\"$session\"}[$__range])) / clamp_min(sum(increase(claude_code_lines_of_code_count_total{session_id=~\"$session\"}[$__range])), 1)" }]
+    },
+    {
+      "type": "timeseries", "title": "Cost per hour by model", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (model) (increase(claude_code_cost_usage_USD_total{session_id=~\"$session\"}[1h]))", "legendFormat": "{{model}}", "interval": "1h" }]
+    },
+    {
+      "type": "timeseries", "title": "Active time: Claude working vs you typing", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "description": "type=cli is Claude executing, type=user is time you spent typing. A long cli stretch with little user time is an autonomous run.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (type) (increase(claude_code_active_time_seconds_total{session_id=~\"$session\"}[1h]))", "legendFormat": "{{type}}", "interval": "1h" }]
+    },
+    {
+      "type": "table", "title": "Cost per session", "gridPos": { "h": 10, "w": 12, "x": 0, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 3 }, "overrides": [] },
+      "options": { "sortBy": [{ "displayName": "Value", "desc": true }] },
+      "transformations": [{ "id": "organize", "options": { "excludeByName": { "Time": true } } }],
+      "targets": [{ "refId": "A", "instant": true, "format": "table", "expr": "sort_desc(sum by (session_id, terminal_type) (increase(claude_code_cost_usage_USD_total{session_id=~\"$session\"}[$__range])))" }]
+    },
+    {
+      "type": "table", "title": "Prompts and responses per session", "gridPos": { "h": 10, "w": 12, "x": 12, "y": 13 },
+      "description": "Many prompts with short responses is a back-and-forth session; few prompts with many api_requests is delegation.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "transformations": [
+        { "id": "merge" },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ],
+      "targets": [
+        { "refId": "prompts", "instant": true, "format": "table", "expr": "sum by (session_id) (count_over_time({service_name=\"claude-code\"} | event_name=\"user_prompt\" | session_id=~\"$session\" [$__range]))" },
+        { "refId": "api_requests", "instant": true, "format": "table", "expr": "sum by (session_id) (count_over_time({service_name=\"claude-code\"} | event_name=\"api_request\" | session_id=~\"$session\" [$__range]))" },
+        { "refId": "tool_calls", "instant": true, "format": "table", "expr": "sum by (session_id) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | session_id=~\"$session\" [$__range]))" }
+      ]
+    },
+    {
+      "type": "piechart", "title": "Cost share by model", "gridPos": { "h": 8, "w": 8, "x": 0, "y": 23 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum by (model) (increase(claude_code_cost_usage_USD_total{session_id=~\"$session\"}[$__range]))", "legendFormat": "{{model}}" }]
+    },
+    {
+      "type": "piechart", "title": "Cost share by effort", "gridPos": { "h": 8, "w": 8, "x": 8, "y": 23 },
+      "description": "Empty effort means the request did not carry the label (older sessions or auxiliary calls).",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum by (effort) (increase(claude_code_cost_usage_USD_total{session_id=~\"$session\"}[$__range]))", "legendFormat": "{{effort}}" }]
+    },
+    {
+      "type": "timeseries", "title": "Lines of code per hour", "gridPos": { "h": 8, "w": 8, "x": 16, "y": 23 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60 } }, "overrides": [{ "matcher": { "id": "byName", "options": "removed" }, "properties": [{ "id": "custom.transform", "value": "negative-Y" }] }] },
+      "targets": [{ "refId": "A", "expr": "sum by (type) (increase(claude_code_lines_of_code_count_total{session_id=~\"$session\"}[1h]))", "legendFormat": "{{type}}", "interval": "1h" }]
+    }
+  ]
+}

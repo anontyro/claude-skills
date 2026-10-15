@@ -1,0 +1,126 @@
+{
+  "uid": "claude-subagents",
+  "title": "Claude subagents, skills & maintenance",
+  "tags": ["claude-code", "workflows"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": { "from": "now-7d", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    { "type": "row", "title": "Subagents (native subagent_completed events)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false, "panels": [] },
+    {
+      "type": "timeseries", "title": "Subagent completions by type", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (agent_type) (count_over_time({service_name=\"claude-code\"} | event_name=\"subagent_completed\" [$__auto]))", "legendFormat": "{{agent_type}}" }]
+    },
+    {
+      "type": "bargauge", "title": "p95 duration by agent type", "gridPos": { "h": 8, "w": 6, "x": 12, "y": 1 },
+      "description": "A wide spread inside one fan-out is a decomposition problem, not a model problem.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "quantile_over_time(0.95, {service_name=\"claude-code\"} | event_name=\"subagent_completed\" | unwrap duration_ms [$__range]) by (agent_type)", "legendFormat": "{{agent_type}}" }]
+    },
+    {
+      "type": "bargauge", "title": "Mean tokens per subagent", "gridPos": { "h": 8, "w": 6, "x": 18, "y": 1 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "avg_over_time({service_name=\"claude-code\"} | event_name=\"subagent_completed\" | unwrap total_tokens [$__range]) by (agent_type)", "legendFormat": "{{agent_type}}" }]
+    },
+    {
+      "type": "bargauge", "title": "Mean tool uses per subagent", "gridPos": { "h": 7, "w": 8, "x": 0, "y": 9 },
+      "description": "Very low means an agent returned without doing the work; very high means it is thrashing.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "avg_over_time({service_name=\"claude-code\"} | event_name=\"subagent_completed\" | unwrap total_tool_uses [$__range]) by (agent_type)", "legendFormat": "{{agent_type}}" }]
+    },
+    {
+      "type": "stat", "title": "Model swaps", "gridPos": { "h": 7, "w": 4, "x": 8, "y": 9 },
+      "description": "A subagent ran on a different model than requested (org allowlist or fallback).",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] } }, "overrides": [] },
+      "options": { "colorMode": "background" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"subagent_completed\" | model_swapped=\"true\" [$__range])) or vector(0)" }]
+    },
+    {
+      "type": "bargauge", "title": "Cost by agent name", "gridPos": { "h": 7, "w": 12, "x": 12, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum by (agent_name) (increase(claude_code_cost_usage_USD_total{agent_name!=\"\"}[$__range]))", "legendFormat": "{{agent_name}}" }]
+    },
+    { "type": "row", "title": "Skills and MCP", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }, "collapsed": false, "panels": [] },
+    {
+      "type": "timeseries", "title": "Skill activations", "gridPos": { "h": 8, "w": 8, "x": 0, "y": 17 },
+      "description": "invocation_trigger tells you whether you typed /skill or Claude picked it proactively.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (skill_name, invocation_trigger) (count_over_time({service_name=\"claude-code\"} | event_name=\"skill_activated\" [$__auto]))", "legendFormat": "{{skill_name}} ({{invocation_trigger}})" }]
+    },
+    {
+      "type": "bargauge", "title": "Cost by skill", "gridPos": { "h": 8, "w": 8, "x": 8, "y": 17 },
+      "description": "Attributed via the skill_name label on cost metrics. Empty until a skill-driven turn has spent tokens.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum by (skill_name) (increase(claude_code_cost_usage_USD_total{skill_name!=\"\"}[$__range]))", "legendFormat": "{{skill_name}}" }]
+    },
+    {
+      "type": "bargauge", "title": "Cost by MCP tool", "gridPos": { "h": 8, "w": 8, "x": 16, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum by (mcp_server_name, mcp_tool_name) (increase(claude_code_cost_usage_USD_total{mcp_tool_name!=\"\"}[$__range]))", "legendFormat": "{{mcp_server_name}}/{{mcp_tool_name}}" }]
+    },
+    { "type": "row", "title": "Monthly maintenance (outcomes.jsonl, workflow=monthly-maintenance)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 }, "collapsed": false, "panels": [] },
+    {
+      "type": "stat", "title": "Last run status", "gridPos": { "h": 6, "w": 4, "x": 0, "y": 26 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^status$/" }, "textMode": "value" },
+      "targets": [{ "refId": "A", "expr": "{service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | line_format \"{{.status}}\"", "maxLines": 1 }]
+    },
+    {
+      "type": "bargauge", "title": "Last run: plan buckets", "gridPos": { "h": 6, "w": 10, "x": 4, "y": 26 },
+      "description": "auto = applied unattended, care = applied with a pin/override, flag = needs a human, errors = collectors that failed.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [
+        { "refId": "auto", "instant": true, "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | unwrap count_auto [$__range])", "legendFormat": "auto" },
+        { "refId": "care", "instant": true, "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | unwrap count_care [$__range])", "legendFormat": "care" },
+        { "refId": "flag", "instant": true, "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | unwrap count_flag [$__range])", "legendFormat": "flag" },
+        { "refId": "errors", "instant": true, "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | unwrap count_errors [$__range])", "legendFormat": "errors" }
+      ]
+    },
+    {
+      "type": "bargauge", "title": "Last run: applied / reverted / flagged", "gridPos": { "h": 6, "w": 10, "x": 14, "y": 26 },
+      "description": "Reverted climbing means autoLevel is too generous for that lane.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [
+        { "refId": "applied", "instant": true, "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | unwrap applied [$__range])", "legendFormat": "applied" },
+        { "refId": "reverted", "instant": true, "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | unwrap reverted [$__range])", "legendFormat": "reverted" },
+        { "refId": "flagged", "instant": true, "expr": "last_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | unwrap flagged [$__range])", "legendFormat": "flagged" }
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Vulnerabilities auto-fixed vs flagged per run", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "points", "pointSize": 8 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | unwrap count_vulnAuto [1d])", "legendFormat": "vuln auto" },
+        { "refId": "B", "expr": "sum_over_time({service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | unwrap count_vulnFlag [1d])", "legendFormat": "vuln flagged" }
+      ]
+    },
+    {
+      "type": "logs", "title": "Maintenance runs", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [{ "refId": "A", "expr": "{service_name=\"claude-reporting\"} | file=\"outcomes.jsonl\" | workflow=\"monthly-maintenance\" | line_format \"{{.month}} {{.status}} auto={{.count_auto}} care={{.count_care}} flag={{.count_flag}} applied={{.applied}} reverted={{.reverted}} report={{.reportPath}}\"" }]
+    }
+  ]
+}
