@@ -1,2 +1,2 @@
 .DS_Store
-plugins/claude-reporting/data/*.jsonl
+plugins/*/evals/results/

@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: vague-request
+description: An under-specified request surfaces open questions instead of guessing.
+tags: [vague, open-questions]
+expected_outcome: Open questions are raised or recorded; the spec is not marked approved.
+context:
+  scaffold_script: fixture.sh

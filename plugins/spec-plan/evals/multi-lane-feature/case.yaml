@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: multi-lane-feature
+description: A cross-lane feature produces ordered waves and settled shared contracts.
+tags: [multi-lane, waves]
+expected_outcome: Waves put the db view and API contract first; decisions pin every cross-lane interface; the validator passes.
+context:
+  scaffold_script: fixture.sh
