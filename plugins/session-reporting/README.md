@@ -26,7 +26,7 @@ The "workflow outcome" panels expect results with the fields `status`, `gate`, `
 **Spec quality.** The `spec-plan` plugin has its own hook that validates every spec written under
 `Docs/*/Specs/` and appends a row to `specs.jsonl` in the same directory (session id, repo, git sha, skill version,
 `variant`, revision, validator errors). The collector tails it automatically; the "Spec quality" dashboard
-(`/d/claude-specs`) charts it. Join a row to its cost via `session_id` on the "Claude sessions" dashboard. The
+(`/d/claude-specs`) charts it. When the work is done, the `spec-complete` skill appends a Completion section (summary, deviations, a 1-5 rating you give) and the same hook logs it as a `SpecCompleted` row; the dashboard charts rating and deviations by skill version. Join a row to its cost via `session_id` on the "Claude sessions" dashboard. The
 `variant` (`spec-plan-<version>-<hash>`) lives in the row, not in OTel resource attributes, because plugins cannot
 set env.
 

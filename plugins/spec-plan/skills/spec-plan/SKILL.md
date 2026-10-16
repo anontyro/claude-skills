@@ -135,6 +135,10 @@ they start with `Docs/`, which is in the target repo.
    validator passes.
 8. Tell the user the spec path and that it is ready to hand to the builders
    (whatever workflow or agents the repo uses to execute it).
+9. When the work is done, use the `spec-complete` skill to append a Completion
+   section (summary, per-package results, deviations, rating). It uses
+   `references/COMPLETION_TEMPLATE.md`, and the logging hook turns it into a
+   `SpecCompleted` row for evals.
 
 ## Conventions the spec must respect
 

@@ -297,7 +297,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 34
       },
       "options": {
         "showTime": true,
@@ -309,6 +309,240 @@
         {
           "refId": "A",
           "expr": "{service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | line_format \"{{.repo}} {{.spec_path}} rev={{.revision}} valid={{.valid}} errors={{.error_count}} warnings={{.warning_count}} {{.variant}} session={{.session_id}}\""
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Completed specs",
+      "description": "Specs closed out with a Completion section.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum(count_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | event=\"SpecCompleted\" [$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Average rating",
+      "description": "Human rating 1-5 given at completion.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "avg(avg_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | event=\"SpecCompleted\" | unwrap rating [$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Avg deviations per spec",
+      "description": "Where the build differed from the plan.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "avg(avg_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | event=\"SpecCompleted\" | unwrap deviations [$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Avg files outside ownedFiles",
+      "description": "Changed files no package owned: a sign ownedFiles was not exhaustive.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "avg(avg_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | event=\"SpecCompleted\" | unwrap files_outside_owned [$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Rating by skill version",
+      "description": "Mean completion rating per variant. Compare before/after a skill change.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (variant) (avg_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | event=\"SpecCompleted\" | unwrap rating [$__interval]))",
+          "legendFormat": "{{variant}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Deviations by skill version",
+      "description": "Mean deviation count per completed spec.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (variant) (avg_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | event=\"SpecCompleted\" | unwrap deviations [$__interval]))",
+          "legendFormat": "{{variant}}"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "logs",
+      "title": "Completed specs (raw)",
+      "description": "One line per completion. session_id joins cost on the Claude sessions dashboard.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | event=\"SpecCompleted\" | line_format \"{{.repo}} {{.spec_path}} rating={{.rating}} packages={{.packages_done}}/{{.packages_total}} deviations={{.deviations}} outside={{.files_outside_owned}} {{.variant}} session={{.session_id}} \u2014 {{.summary}}\""
         }
       ]
     }
