@@ -1,0 +1,316 @@
+{
+  "uid": "claude-specs",
+  "title": "Spec quality",
+  "tags": [
+    "claude-code",
+    "spec-plan"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Specs written",
+      "description": "Distinct (session, spec) pairs: rows with revision 1.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | revision=\"1\" [$__range]))",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "First-pass valid",
+      "description": "Share of specs whose first write already passed the validator.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | revision=\"1\" | valid=\"true\" [$__range])) / sum(count_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | revision=\"1\" [$__range])) * 100",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Avg errors, first write",
+      "description": "Mean validator error count at revision 1.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(avg_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | revision=\"1\" | unwrap error_count [$__range]))",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Avg revisions per spec",
+      "description": "Mean of each spec's highest revision within a session.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(max by (session_id, spec_path) (max_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | unwrap revision [$__range])))",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Validator errors by skill version",
+      "description": "Mean error_count per write, split by variant (spec-plan-<version>-<hash>). Compare before/after a skill change.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (variant) (avg_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | unwrap error_count [$__interval]))",
+          "legendFormat": "{{variant}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Validator warnings by skill version",
+      "description": "Warnings are judgement calls (e.g. a release over ~30 files).",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (variant) (avg_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | unwrap warning_count [$__interval]))",
+          "legendFormat": "{{variant}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Revisions per spec",
+      "description": "Highest revision per spec path. High numbers mean the spec needed many rewrites.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "options": {
+        "orientation": "horizontal",
+        "legend": {
+          "showLegend": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "legendFormat": "{{spec_path}}",
+          "expr": "max by (spec_path) (max_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | unwrap revision [$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Specs written per skill version",
+      "description": "Volume per variant, so averages above are not read from one or two specs.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (variant) (count_over_time({service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | revision=\"1\" [$__interval]))",
+          "legendFormat": "{{variant}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "logs",
+      "title": "Spec writes (raw)",
+      "description": "One line per write. session_id joins Claude sessions dashboard cost data; expand a line for the full error list.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=\"claude-reporting\"} | file=\"specs.jsonl\" | line_format \"{{.repo}} {{.spec_path}} rev={{.revision}} valid={{.valid}} errors={{.error_count}} warnings={{.warning_count}} {{.variant}} session={{.session_id}}\""
+        }
+      ]
+    }
+  ]
+}

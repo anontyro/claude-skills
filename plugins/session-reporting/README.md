@@ -23,5 +23,12 @@ compare runs.
 
 The "workflow outcome" panels expect results with the fields `status`, `gate`, `counts` and `quality.lastScore`; they stay empty unless a workflow in your repo returns them.
 
+**Spec quality.** The `spec-plan` plugin has its own hook that validates every spec written under
+`Docs/*/Specs/` and appends a row to `specs.jsonl` in the same directory (session id, repo, git sha, skill version,
+`variant`, revision, validator errors). The collector tails it automatically; the "Spec quality" dashboard
+(`/d/claude-specs`) charts it. Join a row to its cost via `session_id` on the "Claude sessions" dashboard. The
+`variant` (`spec-plan-<version>-<hash>`) lives in the row, not in OTel resource attributes, because plugins cannot
+set env.
+
 Gotchas: after adding a dashboard file, `docker compose restart grafana`. If the collector stops seeing new JSONL
 lines (Docker Desktop bind-mount staleness), `docker compose restart otel-collector`; `check.sh` catches it.

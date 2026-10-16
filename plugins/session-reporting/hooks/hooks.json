@@ -4,14 +4,14 @@
       {
         "matcher": "Workflow",
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/log-workflow-result.sh", "timeout": 20 }
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/log-workflow-result.sh\"", "timeout": 20 }
         ]
       }
     ],
     "SubagentStop": [
       {
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/log-workflow-result.sh", "timeout": 20 }
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/log-workflow-result.sh\"", "timeout": 20 }
         ]
       }
     ]

@@ -43,6 +43,7 @@ check_http "dashboard Claude sessions"  "http://localhost:3000/api/dashboards/ui
 check_http "dashboard Claude API"       "http://localhost:3000/api/dashboards/uid/claude-api"       '"title":"Claude API'
 check_http "dashboard Claude tools"     "http://localhost:3000/api/dashboards/uid/claude-tools"     '"title":"Claude tools'
 check_http "dashboard Claude subagents" "http://localhost:3000/api/dashboards/uid/claude-subagents" '"title":"Claude subagents'
+check_http "dashboard Spec quality"     "http://localhost:3000/api/dashboards/uid/claude-specs"     '"title":"Spec quality"'
 
 echo "Prometheus scraping the collector"
 check_http "target otel-collector up" "http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22otel-collector%22%7D" '"value":\[[0-9.]*,"1"\]'

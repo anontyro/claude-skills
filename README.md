@@ -2,7 +2,7 @@
 
 | Plugin | What it gives you |
 |---|---|
-| `spec-plan` | Skill + validator for writing build-ready specs (lanes, packages, owned files, acceptance criteria) |
+| `spec-plan` | Skill + validator for writing build-ready specs (lanes, packages, owned files, acceptance criteria), and a hook that validates and logs every spec written |
 | `session-reporting` | Hooks logging workflow/subagent outcomes, plus an optional local OTel + Grafana stack |
 
 ## Use from another repo
