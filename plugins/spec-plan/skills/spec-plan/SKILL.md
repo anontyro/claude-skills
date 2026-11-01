@@ -5,7 +5,7 @@ description: Used when planning a feature or work item that will be built by par
 
 # Writing a spec for a multi-agent build
 
-The loop is: plan mode → spec file → build → review. The spec is the only
+The loop is: plan mode → spec file → build → audit → PR. The spec is the only
 channel from the human to the builders, because an automated build cannot ask
 questions mid-run. A spec that leaves a design decision open makes the build
 stop and hand the question back; a spec that hides one makes two builders
@@ -139,6 +139,34 @@ they start with `Docs/`, which is in the target repo.
    section (summary, per-package results, deviations, rating). It uses
    `references/COMPLETION_TEMPLATE.md`, and the logging hook turns it into a
    `SpecCompleted` row for evals.
+10. **Audit before the PR.** The last step, after completion and before any PR
+    is raised. It is a PR-style review of the whole branch diff against the spec.
+    Run it with the `ponytail:ponytail-review` skill if it is installed; else
+    `code-review`; else review by hand against the checklist. Fix what it finds,
+    re-run the lane checks, then raise the PR. Check:
+    - **Needed:** every changed file is in some package's `ownedFiles`, and every
+      change traces to an acceptance criterion or decision. Flag and remove
+      anything that is not (scope creep, speculative options, dead code, stray
+      files). A non-goal that got built is a defect.
+    - **Tests make sense:** each test would fail if the behaviour broke. They use
+      real cases (realistic inputs, edge and error paths, the actual contract),
+      not mocks of the unit under test, tautologies or snapshots of whatever the
+      code returns. Flag tests that only raise coverage, and risky logic with no
+      test. No test deleted or skipped to go green.
+    - **DRY:** no logic, constant or string copied across packages. Name the
+      existing helper it should reuse, or the shared one to extract.
+    - **SOLID and design:** one reason to change per module (SRP); extend by
+      adding, not editing switch chains (OCP); no subtype that breaks its base's
+      contract (LSP); small focused interfaces, no unused members (ISP); depend
+      on abstractions at boundaries, not concrete I/O (DIP). Also KISS and
+      YAGNI, separation of concerns, and no leaky or circular dependencies.
+    - **Correctness and safety:** validation at trust boundaries, error
+      handling, security, behaviour with the toggle off.
+    - **Spec fidelity:** code that differs from the spec is recorded in the
+      decision record and the Completion deviations.
+
+    Report findings ranked by severity; do not raise the PR with open
+    must-fix items. Note the audit result in the PR description.
 
 ## Conventions the spec must respect
 

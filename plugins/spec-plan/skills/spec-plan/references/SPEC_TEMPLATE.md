@@ -99,6 +99,7 @@ Shared acceptance for every package:
 - The lane checks pass for its files, measured against the baseline.
 - Nothing new runs with the toggle off (if flagged).
 - No test is deleted or skipped to pass a check.
+- The branch passes the pre-PR audit (SKILL.md step 10) before a PR is raised: no unneeded changes, tests that exercise real cases, no DRY/SOLID defects.
 - Shared resources (strings, config, schemas) only through the package that owns them. A package that finds one missing reports `blocked`.
 
 ### P0 · <Lane>: <what> (<release> · <task#>, wave 1)
